@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+from tqdm import tqdm # 冒頭でインポート
 
 class StockDatabase:
     """株価の時系列データと学習フラグをローカルのSQLiteデータベースで一元管理するクラス"""
@@ -57,29 +58,60 @@ class StockDatabase:
     def save_batch_data(self, df_batch):
         if df_batch.empty:
             return
-        
-        df_stacked = df_batch.stack(level=1)
-        df_stacked.index.names = ['date', 'ticker']
-        df_stacked = df_stacked.reset_index()
-        
-        df_stacked.columns = [c.lower() for c in df_stacked.columns]
-        df_stacked = df_stacked[['ticker', 'date', 'open', 'high', 'low', 'close', 'volume']]
-        
-        df_stacked['date'] = pd.to_datetime(df_stacked['date']).dt.tz_localize(None).dt.strftime('%Y-%m-%d')
-        df_stacked = df_stacked.dropna(subset=['open', 'close'])
-        
+
+        # 1. 既存データの取得
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            payload = [
-                (row['ticker'], row['date'], float(row['open']), float(row['high']), float(row['low']), float(row['close']), int(row['volume']))
-                for _, row in df_stacked.iterrows()
-            ]
-            cursor.executemany("""
-                INSERT OR IGNORE INTO daily_prices 
-                (ticker, date, open, high, low, close, volume, is_trained)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-            """, payload)
-            conn.commit()
+            cursor.execute("SELECT date, ticker FROM daily_prices")
+            existing_records = set(cursor.fetchall()) 
+
+        tickers = df_batch.columns.levels[0].unique()
+        payload = []
+
+        # 2. 銘柄ごとの進捗を表示
+        print(f"--- データの保存処理を開始: {len(tickers)} 銘柄 ---")
+        for ticker in tqdm(tickers, desc="銘柄処理中"):
+            ticker_data = df_batch[ticker]
+
+            for date, row in ticker_data.iterrows():
+                try:
+                    # NaNチェック
+                    if row.isnull().any():
+                        continue 
+                    
+                    date_str = str(date.date())
+                    
+                    # 重複チェック
+                    if (date_str, ticker) in existing_records:
+                        continue
+                    
+                    payload.append((
+                        ticker, 
+                        date_str,
+                        float(row['Open']),
+                        float(row['High']),
+                        float(row['Low']),
+                        float(row['Close']),
+                        int(row['Volume']),
+                        0
+                    ))
+                except Exception as e:
+                    continue
+
+        # 3. 登録実行
+        if payload:
+            print(f"--- {len(payload)} 件の新規データをDBへ一括登録中... ---")
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany("""
+                    INSERT INTO daily_prices 
+                    (ticker, date, open, high, low, close, volume, is_trained)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, payload)
+                conn.commit()
+            print("登録が完了しました。")
+        else:
+            print("登録すべき新規データはありませんでした。")
 
     def update_trained_status(self, ticker, dates):
         if not dates:

@@ -42,7 +42,12 @@ def main():
             actions=False,
             progress=False
         )
-        
+        print("\n=== ダウンロードデータのデバッグ表示 ===")
+        print(f"データフレームの形状: {df_batch.shape}")
+        print(f"列名(Columns): {df_batch.columns.tolist()}")
+        print("\n--- データの先頭5行 ---")
+        print(df_batch.head())
+        print("===================================\n")
         if not df_batch.empty:
             print("📥 ダウンロード完了。データをクレンジングしてローカルDBへ一括保存しています...")
             db.save_batch_data(df_batch)
