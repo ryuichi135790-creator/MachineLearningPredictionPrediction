@@ -123,3 +123,4 @@ class StockDatabase:
             query = f"UPDATE daily_prices SET is_trained = 1 WHERE ticker = ? AND date IN ({placeholders})"
             cursor.execute(query, [ticker] + date_strs)
             conn.commit()
+            

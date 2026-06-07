@@ -32,12 +32,16 @@ class IncrementalLearningModel:
         print(">> 今日の学習内容をモデルファイルに永続化しました。")
 
     def learn_incremental(self, X_past, y_past):
+        # 1. StandardScaler の更新（必要であれば）
+        # 完全に固定するのではなく、オンライン学習向きのスケーラーに変えるのが理想ですが、
+        # 手始めに現在のデータをスケーラーに追加学習させる（partial_fit 相当）
+        X_scaled = self.scaler.partial_fit(X_past).transform(X_past)
+        
+        # 2. モデルの学習
         if not self.is_trained:
-            X_scaled = self.scaler.fit_transform(X_past)
             self.model.fit(X_scaled, y_past)
             self.is_trained = True
         else:
-            X_scaled = self.scaler.transform(X_past)
             self.model.partial_fit(X_scaled, y_past)
 
     def predict_next_day(self, X_latest):

@@ -63,6 +63,20 @@ class StockDataPipeline:
             
             df_calc['Next_Day_Return'] = ((df_calc['close'].shift(-1) - df_calc['close']) / df_calc['close']) * 100
             
+            # --- 異常値検知とログ出力 ---
+            threshold = 50.0 # 15%以上の急騰・急落を異常とみなす
+            outlier_mask = (df_calc['Next_Day_Return'].abs() > threshold)
+            
+            if outlier_mask.any():
+                # 異常値があった日付を抽出して表示
+                outlier_dates = df_calc.index[outlier_mask].strftime('%Y-%m-%d').tolist()
+                print(f"🚨 [異常値検知] {ticker_symbol} で異常な変動を検出しました")
+                print(f"   日付リスト: {outlier_dates}")
+                print(f"   該当するリターン値: {df_calc.loc[outlier_mask, 'Next_Day_Return'].values}")
+                
+                # 学習を汚染しないよう、異常値を NaN にして除外対象にする
+                df_calc.loc[outlier_mask, 'Next_Day_Return'] = np.nan
+
             df_calc = df_calc.rename(columns={
                 'MACD_12_26_9': 'MACD',
                 'MACDh_12_26_9': 'MACD_Hist',
