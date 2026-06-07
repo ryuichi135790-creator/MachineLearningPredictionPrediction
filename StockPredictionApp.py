@@ -40,7 +40,7 @@ class StockPredictionApp:
         self.prediction_cache["20d"] = []
         
         for _, row in df_base.iterrows():
-            ticker = str(row['Ticker']).replace('📈', '').replace('😴', '').str.strip()
+            ticker = str(row['Ticker']).replace('📈', '').replace('😴', '').strip()
             
             # DBから特徴量データを展開
             df_raw = self.pipeline.db.get_all_cached_data(ticker)
