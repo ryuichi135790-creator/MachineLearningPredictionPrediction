@@ -22,10 +22,7 @@ class StockDataPipeline:
             df_cached = self.db.get_all_cached_data(ticker_symbol)
             
             # 2. 判定ロジックの爆速化 (100行以上あればWeb通信フラグを強制的にFalseにする)
-            if not df_cached.empty and len(df_cached) >= 100:
-                need_web_fetch = False
-            else:
-                need_web_fetch = True
+            need_web_fetch = False
 
             # 3. DBが完全に空の場合のみセーフティとしてyfinanceを叩く
             df_new_delta = pd.DataFrame()
