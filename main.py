@@ -19,7 +19,7 @@ from StockPredictionApp import StockPredictionApp
 def main():
     total_start_time = time.time()
     
-    FETCH_PERIOD = "20y"
+    FETCH_PERIOD = "1w"
     FEATURES = ['MACD', 'MACD_Hist', 'RSI', 'ADX', 'SMA_Gap']
     
     db = StockDatabase()
