@@ -96,6 +96,11 @@ class StockPredictionApp:
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def _build_period_selectors(self):
+        self.ticker_entry = tk.Entry(self.left_frame, font=('MS Gothic', 12))
+        self.ticker_entry.pack(pady=5, padx=10, fill=tk.X)
+        self.add_btn = tk.Button(self.left_frame, text="銘柄を追加学習して予測", command=self._add_and_train_ticker)
+        self.add_btn.pack(pady=5)
+
         """左側上部に期間切り替え用のラジオボタンを配置"""
         self.period_var = tk.StringVar(value="1d")
         
@@ -202,3 +207,24 @@ class StockPredictionApp:
             canvas_widget = canvas.get_tk_widget()
             canvas_widget.pack(fill=tk.BOTH, expand=True)
             canvas.draw()
+            
+    def _add_and_train_ticker(self):
+        ticker = self.ticker_entry.get().strip()
+        if not ticker: return
+        
+        # 一時的に期間を1ヶ月に設定して取得
+        self.pipeline.default_period = "1mo"
+        
+        result = self.pipeline.fetch_and_transform(ticker)
+        if result:
+            X_past, y_past, X_latest_today, _, _, _, _ = result
+            
+            # モデルの追加学習（※ .save() を呼び出さないことで保存されない）
+            self.ai_brain.learn_incremental(X_past, y_past)
+            
+            # 再計算と表示更新
+            self._precompute_all_periods(self.df_results)
+            self._refresh_display_data()
+            print(f"✅ {ticker} をメモリ上で学習しました（永続保存はしていません）")
+        else:
+            print("❌ データ取得失敗。")
